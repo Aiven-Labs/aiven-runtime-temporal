@@ -1,4 +1,6 @@
 """Single-replica demo bootstrap. No credentials are written to logs."""
+import base64
+import binascii
 import json
 import os
 import re
@@ -20,7 +22,13 @@ def settings(env):
     mode = env.get("PG_SSLMODE", "verify-full")
     if mode != "verify-full" and not (mode == "disable" and env.get("LOCAL_DEVELOPMENT") == "true"):
         raise ValueError("PG_SSLMODE must be verify-full; disable is only allowed for LOCAL_DEVELOPMENT=true")
-    if mode == "verify-full" and not env.get("PG_CA_CERT", "").strip():
+    ca_cert = env.get("PG_CA_CERT", "").strip()
+    if env.get("PG_CA_CERT_BASE64"):
+        try:
+            ca_cert = base64.b64decode(env["PG_CA_CERT_BASE64"], validate=True).decode("ascii")
+        except (ValueError, binascii.Error, UnicodeDecodeError):
+            raise ValueError("PG_CA_CERT_BASE64 must be a valid base64-encoded PEM certificate") from None
+    if mode == "verify-full" and not ca_cert:
         raise ValueError("Set PG_CA_CERT to the Aiven project CA certificate")
     password = env.get("UI_PASSWORD", "")
     if len(password) < 16 or any(c in password for c in "\r\n\x00"):
@@ -38,7 +46,7 @@ def settings(env):
     return dict(host=url.hostname, port=url.port or 5432, user=unquote(url.username),
                 password=unquote(url.password), database=unquote(url.path.lstrip("/")) or "defaultdb",
                 tls=mode == "verify-full", username=username, ui_password=password,
-                origin=origin.rstrip("/"), local=local)
+                origin=origin.rstrip("/"), local=local, ca_cert=ca_cert)
 
 
 def server_config(s):
@@ -75,7 +83,7 @@ def write(path, value):
 def prepare(s):
     RUN.mkdir(parents=True, exist_ok=True)
     if s["tls"]:
-        write(RUN / "ca.pem", os.environ["PG_CA_CERT"])
+        write(RUN / "ca.pem", s["ca_cert"])
     # JSON is valid YAML and safely escapes quotes and special characters in secrets.
     write(RUN / "server.yaml", json.dumps(server_config(s)))
     write(RUN / "dynamic.yaml", "{}\n")

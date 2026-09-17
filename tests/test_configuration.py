@@ -1,4 +1,5 @@
 import importlib.util
+import base64
 import json
 import unittest
 from pathlib import Path
@@ -31,6 +32,17 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_missing_ca_fails_closed(self):
         self.env.pop("PG_CA_CERT")
+        with self.assertRaises(ValueError):
+            bootstrap.settings(self.env)
+
+    def test_base64_ca_is_decoded_for_runtime(self):
+        pem = "-----BEGIN CERTIFICATE-----\nexample\n-----END CERTIFICATE-----\n"
+        self.env.pop("PG_CA_CERT")
+        self.env["PG_CA_CERT_BASE64"] = base64.b64encode(pem.encode()).decode()
+        self.assertEqual(bootstrap.settings(self.env)["ca_cert"], pem)
+
+    def test_invalid_base64_ca_fails_closed(self):
+        self.env["PG_CA_CERT_BASE64"] = "invalid!"
         with self.assertRaises(ValueError):
             bootstrap.settings(self.env)
 

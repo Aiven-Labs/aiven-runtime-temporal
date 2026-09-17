@@ -51,13 +51,16 @@ Use **`compose.aiven.yaml`**, not the local `compose.yaml`.
 | Variable | Value |
 | --- | --- |
 | `DATABASE_URL` | Aiven PostgreSQL URI with URL-encoded credentials and actual service port |
-| `PG_CA_CERT` | Full PEM contents of the Aiven project CA certificate, including real newlines |
+| `PG_CA_CERT_BASE64` | Base64-encoded Aiven project CA certificate, on one line; use this for Runtime because its API rejects multiline values |
+| `PG_CA_CERT` | Alternative: raw PEM certificate, only where multiline environment values are supported |
 | `PG_SSLMODE` | `verify-full` (default); URI query parameters do not override this setting |
 | `UI_USERNAME` | `demo` by default |
 | `UI_PASSWORD` | Unique password of at least 16 characters |
 | `PUBLIC_ORIGIN` | Exact public HTTPS origin, e.g. `https://your-app-hostname` |
 
 Startup validates configuration, waits for PostgreSQL, creates missing databases, initializes missing schemas and applies the pinned version's migrations. Existing schemas are updated, never dropped. It then starts Temporal, waits for gRPC health, starts the worker and UI, and exposes the authenticated proxy. A required process exiting stops the whole container. SIGTERM is forwarded and children get up to 30 seconds to stop.
+
+Encode a downloaded `ca.pem` without line breaks using `openssl base64 -A -in ca.pem`. Base64 is a transport encoding, not encryption; decoding restores the certificate used for full TLS verification.
 
 **Run exactly one replica and avoid overlapping deployments during schema setup.** This starter does not coordinate migrations across replicas. Before upgrading, back up PostgreSQL and follow Temporal's supported upgrade sequence; keep the Server and admin-tools pins identical. Do not downgrade a migrated database.
 
