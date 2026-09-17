@@ -1,0 +1,15 @@
+services:
+  temporal-demo:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - temporal-postgres
+    environment:
+      # Configure this integration with real credentials in Runtime.
+      DATABASE_URL: postgresql://USER:PASSWORD@temporal-postgres:5432/defaultdb
+      PG_SSLMODE: verify-full
+      # Set PG_CA_CERT, UI_PASSWORD and PUBLIC_ORIGIN in Runtime before deployment.
+      UI_USERNAME: demo
+  temporal-postgres:
+    image: postgres:16

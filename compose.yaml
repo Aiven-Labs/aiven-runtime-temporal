@@ -1,0 +1,31 @@
+# Local-only PostgreSQL. Runtime deployments must select compose.aiven.yaml.
+services:
+  temporal-demo:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DATABASE_URL: postgresql://temporal:local-demo-only@postgres:5432/postgres
+      PG_SSLMODE: disable
+      LOCAL_DEVELOPMENT: "true"
+      UI_USERNAME: demo
+      UI_PASSWORD: ${UI_PASSWORD:?Set UI_PASSWORD in .env}
+      PUBLIC_ORIGIN: http://localhost:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 40s
+  postgres:
+    image: postgres:16.10-alpine
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: local-demo-only
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+volumes:
+  postgres-data:
