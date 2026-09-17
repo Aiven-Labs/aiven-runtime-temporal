@@ -73,7 +73,9 @@ Encode a downloaded `ca.pem` without line breaks using `openssl base64 -A -in ca
 - Confirm only port 8080 is exposed. Do not publish 7233, 8081, or internal membership ports.
 - Check logs for schema, namespace, worker, and process failures. The first deliberate activity failure is expected.
 
-Local container health checks validate Temporal gRPC and the UI. Runtime may use its own health model; check deployment status in the Console.
+Local container health checks validate Temporal gRPC and the UI. Runtime's OCI builder ignores Dockerfile HEALTHCHECK; check deployment status and the authenticated endpoint instead. See [VALIDATION.md](VALIDATION.md) for the actual tests and their limits.
+
+The root Dockerfile can also be deployed through Aiven MCP/API, with a managed PostgreSQL integration mapping its connection string to `DATABASE_URL` and the variables above. This is the deployment path used for the recorded live validation; Console scanning of the Compose manifest has not yet been tested.
 
 ## Developer checks
 
